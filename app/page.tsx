@@ -60,7 +60,7 @@ export default async function Page({
         <hr />
         <section>
           <h4>Puzzle</h4>
-          <p>Auto-generated. If it's not good, feel free to refresh!</p>
+          <p>Auto-generated. If it&apos;s not good, feel free to refresh!</p>
           <CrosswordView encoded={decoded} clues={clues} />
         </section>
         <hr />
