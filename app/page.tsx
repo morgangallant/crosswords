@@ -1,95 +1,82 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import * as React from "react";
+import prisma from "@/lib/prisma";
+import Word from "./words/word";
+import { redirect } from "next/navigation";
+import { Crossword } from "@/lib/crossword";
+import CrosswordView from "./crossword";
 
-export default function Home() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  let encoded = searchParams["puzzle"];
+  if (!encoded) {
+    let crossword = new Crossword(8);
+    const words = await prisma.word.findMany();
+    crossword.generateNew(
+      words.map((w) => ({
+        id: w.id,
+        word: w.word,
+      }))
+    );
+    redirect(`?puzzle=${encodeURIComponent(crossword.encode())}`);
+  }
+
+  const decoded = decodeURIComponent(encoded as string);
+
+  let puzzle = new Crossword(0);
+  puzzle.decode(decoded);
+
+  const raw_clues = await prisma.word.findMany({
+    select: {
+      id: true,
+      clue: true,
+    },
+    where: {
+      id: { in: puzzle.words.map((w) => w.id) },
+    },
+  });
+  let clues = [];
+  for (let i = 0; i < puzzle.words.length; i++) {
+    const raw = raw_clues.find((v) => v.id == puzzle.words[i].id);
+    if (raw) {
+      clues.push(raw.clue);
+    } else {
+      clues.push("Missing clue");
+    }
+  }
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
+    <>
+      <main>
+        <h3>Crosswords</h3>
+        <p>Make & play crosswords with your partner!</p>
         <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
+          <a href="https://github.com/morgangallant/crosswords">
+            Source code is on GitHub
           </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
+        </p>
+        <hr />
+        <section>
+          <h4>Puzzle</h4>
+          <p>Auto-generated. If it's not good, feel free to refresh!</p>
+          <CrosswordView encoded={decoded} clues={clues} />
+        </section>
+        <hr />
+        <section>
           <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
+            <strong>Want to add new words?</strong>{" "}
+            <a href="/words">Click here</a>
           </p>
-        </a>
-      </div>
-    </main>
+        </section>
+        <hr />
+        <section className="footer">
+          <p>
+            Made with love for Shenita. May we do crosswords together, forever.
+          </p>
+        </section>
+      </main>
+    </>
   );
 }
